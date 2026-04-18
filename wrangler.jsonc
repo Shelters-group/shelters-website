@@ -1,11 +1,20 @@
 {
-  // Cloudflare Workers — déploiement static assets pour Astro
-  // Doc: https://developers.cloudflare.com/workers/static-assets/
+  // Cloudflare Worker — landing Astro (static assets) + proxy Brevo.
+  // Doc: https://developers.cloudflare.com/workers/static-assets/binding/
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "shelters-website",
   "compatibility_date": "2024-11-01",
+  "main": "worker/index.js",
   "assets": {
     "directory": "./dist",
+    "binding": "ASSETS",
     "not_found_handling": "404-page"
+  },
+  "vars": {
+    // ID de la liste Brevo "Shelters – Waiting list" (non secret).
+    "BREVO_LIST_ID": "3"
   }
+  // Le secret BREVO_API_KEY est défini hors-repo, dans le dashboard
+  // Cloudflare (Workers → shelters-website → Settings → Variables and
+  // Secrets → Add → Type: Secret). Ne jamais le committer ici.
 }

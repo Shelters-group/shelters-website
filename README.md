@@ -1,32 +1,39 @@
 # Shelters — site public
 
-Landing statique Astro déployée sur Cloudflare Pages.
+Landing statique Astro + Worker Cloudflare (proxy Brevo) déployés ensemble.
 
 ## Stack
 
-- **Framework** : [Astro](https://astro.build) v4
-- **Hébergement** : [Cloudflare Pages](https://pages.cloudflare.com) (build GitHub auto-deploy)
-- **Email / CRM** : [Brevo](https://www.brevo.com) (API côté client pour la capture email)
+- **Framework** : [Astro](https://astro.build) v4, sortie statique
+- **Hébergement** : [Cloudflare Workers](https://developers.cloudflare.com/workers/static-assets/) (build auto depuis GitHub, mode static assets + worker script)
+- **Proxy Brevo** : Worker `worker/index.js` — route `POST /api/subscribe`, appelle l'API Brevo avec la clé stockée en Secret runtime (jamais côté client)
+- **Email / CRM** : [Brevo](https://www.brevo.com)
 - **Backend (Phase 2+)** : Supabase (DB, auth, RLS, edge functions)
 
 ## Démarrage local
 
 ```bash
 npm install
-npm run dev
+npm run dev          # dev Astro, http://localhost:4321
+# Pour tester la route /api/subscribe en local : wrangler dev
 ```
-
-Puis ouvrir http://localhost:4321.
 
 ## Variables d'environnement
 
-Copier `.env.example` en `.env` et remplir :
+### Côté build Astro (repo)
 
-- `PUBLIC_SITE_URL` — URL publique du site (ex. `https://shelters.pages.dev`)
-- `PUBLIC_BREVO_LIST_ID` — ID de la liste Brevo qui reçoit les captures
-- `PUBLIC_BREVO_API_KEY_CAPTURE` — clé API Brevo **scopée** (limitée à l'ajout de contacts sur cette liste)
+Copier `.env.example` en `.env` :
 
-> Ces variables sont exposées côté client (préfixe `PUBLIC_`). Utiliser une clé Brevo à scope limité, jamais la clé maître.
+- `PUBLIC_SITE_URL` — URL canonique du site (meta tags)
+
+Aucun secret n'est injecté au build.
+
+### Côté runtime Worker (hors repo)
+
+Déclarées dans le dashboard Cloudflare (Workers → `shelters-website` → Settings → Variables and Secrets) :
+
+- `BREVO_LIST_ID` — Variable normale, déjà définie dans `wrangler.jsonc` (`vars.BREVO_LIST_ID = "3"`).
+- `BREVO_API_KEY` — **Secret**. Clé Brevo scopée à la création de contacts. Jamais dans le repo, jamais dans le bundle client.
 
 ## Build
 
@@ -34,38 +41,47 @@ Copier `.env.example` en `.env` et remplir :
 npm run build
 ```
 
-Produit le site statique dans `dist/`.
+Produit `dist/`. Le Worker (`worker/index.js`) est bundlé par wrangler au moment du deploy et sert `dist/` via le binding `ASSETS`.
 
 ## Déploiement
 
-Push sur `main` → Cloudflare Pages déclenche automatiquement :
+Push sur `main` → Cloudflare déclenche automatiquement :
 
 1. `npm install`
-2. `npm run build`
-3. Publication de `dist/` sur `https://shelters.pages.dev`
+2. `npm run build` (Astro → `dist/`)
+3. `wrangler deploy` (bundle Worker + publie assets)
 
-Les variables d'environnement sont définies côté Cloudflare Pages (onglet **Settings → Environment variables**), pas dans le repo.
+Site : <https://shelters-website.hvernon.workers.dev>
 
 ## Structure
 
 ```
 shelters-website/
 ├── astro.config.mjs
+├── wrangler.jsonc
 ├── package.json
 ├── tsconfig.json
 ├── public/
 │   └── robots.txt
-└── src/
-    ├── components/
-    │   └── EmailCapture.astro
-    ├── layouts/
-    │   └── BaseLayout.astro
-    └── pages/
-        └── index.astro
+├── src/
+│   ├── components/
+│   │   └── EmailCapture.astro      (POST /api/subscribe)
+│   ├── layouts/
+│   │   └── BaseLayout.astro
+│   └── pages/
+│       └── index.astro
+└── worker/
+    └── index.js                    (proxy Brevo + fallback assets)
 ```
+
+## Sécurité
+
+- **Aucune clé API n'est committée dans le repo** (public). Toute clé détectée serait automatiquement révoquée par Brevo via son partenariat secret-scanning GitHub.
+- **Aucune clé n'est inlinée côté client**. Le front ne connaît que le endpoint `/api/subscribe`.
+- Le Worker valide l'email, appelle Brevo, et retourne des codes génériques sans fuiter les détails upstream.
 
 ## Roadmap
 
-- **Phase 1** (actuelle) — Landing + capture email → Brevo
-- **Phase 2** — Page deal + formulaire "Demander l'accès" → Supabase + Brevo via Worker
+- **Phase 1** (actuelle) — Landing + capture email → Worker proxy → Brevo
+- **Phase 2** — Page deal + formulaire « Demander l'accès » → Supabase + Brevo via Worker
 - **Phase 3** — Supabase complet : auth investisseurs, RLS, KYC chiffré, edge functions

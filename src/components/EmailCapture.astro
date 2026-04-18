@@ -1,9 +1,8 @@
 ---
-// Formulaire de capture email qui envoie directement à l'API Brevo
-// côté client. Les deux variables PUBLIC_* sont injectées au build
-// par Cloudflare Pages.
-const listId = import.meta.env.PUBLIC_BREVO_LIST_ID;
-const apiKey = import.meta.env.PUBLIC_BREVO_API_KEY_CAPTURE;
+// Formulaire de capture email : POST vers /api/subscribe, route servie
+// par le Worker Cloudflare qui appelle Brevo côté serveur avec la clé
+// stockée en Secret runtime. Aucune clé n'est exposée au client ni
+// committée dans le repo.
 ---
 
 <form id="email-capture" class="email-capture" novalidate>
@@ -20,7 +19,7 @@ const apiKey = import.meta.env.PUBLIC_BREVO_API_KEY_CAPTURE;
   <p class="ec-status" role="status" aria-live="polite"></p>
 </form>
 
-<script is:inline define:vars={{ listId, apiKey }}>
+<script is:inline>
   (function () {
     const form = document.getElementById('email-capture');
     if (!form) return;
@@ -42,45 +41,23 @@ const apiKey = import.meta.env.PUBLIC_BREVO_API_KEY_CAPTURE;
         return;
       }
 
-      if (!apiKey || !listId) {
-        say(
-          'Configuration manquante côté build (clés Brevo).',
-          false,
-        );
-        return;
-      }
-
       btn.disabled = true;
       say('Envoi en cours…', true);
 
       try {
-        const res = await fetch('https://api.brevo.com/v3/contacts', {
+        const res = await fetch('/api/subscribe', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            accept: 'application/json',
-            'api-key': apiKey,
-          },
-          body: JSON.stringify({
-            email: email,
-            listIds: [Number(listId)],
-            updateEnabled: true,
-          }),
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: email }),
         });
 
-        if (res.ok || res.status === 204) {
+        if (res.ok) {
           say('Merci. Nous vous recontactons rapidement.', true);
           form.reset();
         } else if (res.status === 400) {
-          const body = await res.json().catch(function () {
-            return {};
-          });
-          if (body && body.code === 'duplicate_parameter') {
-            say('Merci. Nous vous recontactons rapidement.', true);
-            form.reset();
-          } else {
-            say('Une erreur est survenue. Réessayez plus tard.', false);
-          }
+          say("Merci d'entrer un email valide.", false);
+        } else if (res.status === 503) {
+          say('Service temporairement indisponible. Réessayez plus tard.', false);
         } else {
           say('Une erreur est survenue. Réessayez plus tard.', false);
         }

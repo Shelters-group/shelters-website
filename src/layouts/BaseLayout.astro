@@ -9,7 +9,9 @@ const {
   description = "Shelters — plateforme d'investissement premium. Accès segmenté Premium, Club et Family Office.",
 } = Astro.props;
 
-const siteUrl = import.meta.env.PUBLIC_SITE_URL ?? 'https://shelters.pages.dev';
+const siteUrl =
+  import.meta.env.PUBLIC_SITE_URL ??
+  'https://shelters-website.hvernon.workers.dev';
 const canonical = new URL(Astro.url.pathname, siteUrl).toString();
 ---
 

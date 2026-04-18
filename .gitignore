@@ -14,9 +14,10 @@ pnpm-debug.log*
 # environment variables
 .env
 .env.local
-# .env.production est volontairement committé : il ne contient que des
-# valeurs PUBLIC_* (inlinées dans le bundle client par Astro au build, donc
-# visibles publiquement de toute façon). Cloudflare le lit à chaque build.
+.env.production
+# IMPORTANT : aucune clé API (Brevo, Supabase service role, etc.) ne doit
+# arriver ici. Les secrets runtime sont stockés côté Cloudflare (Workers
+# → Settings → Variables and Secrets), jamais dans le repo.
 
 # macOS-specific files
 .DS_Store
