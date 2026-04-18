@@ -1,0 +1,115 @@
+---
+export interface Props {
+  title: string;
+  description?: string;
+}
+
+const {
+  title,
+  description = "Shelters — plateforme d'investissement premium. Accès segmenté Premium, Club et Family Office.",
+} = Astro.props;
+
+const siteUrl = import.meta.env.PUBLIC_SITE_URL ?? 'https://shelters.pages.dev';
+const canonical = new URL(Astro.url.pathname, siteUrl).toString();
+---
+
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content={description} />
+    <meta name="generator" content={Astro.generator} />
+    <link rel="canonical" href={canonical} />
+
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <title>{title}</title>
+  </head>
+  <body>
+    <header class="site-header">
+      <a href="/" class="brand">Shelters</a>
+    </header>
+
+    <main>
+      <slot />
+    </main>
+
+    <footer class="site-footer">
+      <p>&copy; {new Date().getFullYear()} Shelters. Tous droits réservés.</p>
+    </footer>
+
+    <style is:global>
+      :root {
+        --bg: #0b0f14;
+        --fg: #e8ecf1;
+        --muted: #8894a6;
+        --accent: #c9a36b;
+        --card: #131a23;
+        --border: #1f2933;
+        --max: 960px;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background: var(--bg);
+        color: var(--fg);
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+          'Helvetica Neue', Arial, sans-serif;
+        line-height: 1.55;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      a {
+        color: var(--accent);
+        text-decoration: none;
+      }
+
+      a:hover {
+        text-decoration: underline;
+      }
+
+      main {
+        min-height: calc(100vh - 160px);
+      }
+
+      .site-header,
+      .site-footer {
+        max-width: var(--max);
+        margin: 0 auto;
+        padding: 1.5rem 1.25rem;
+      }
+
+      .site-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .brand {
+        font-weight: 700;
+        font-size: 1.25rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--fg);
+      }
+
+      .site-footer {
+        border-top: 1px solid var(--border);
+        color: var(--muted);
+        font-size: 0.875rem;
+        margin-top: 4rem;
+      }
+    </style>
+  </body>
+</html>

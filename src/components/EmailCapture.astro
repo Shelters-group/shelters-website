@@ -1,0 +1,167 @@
+---
+// Formulaire de capture email qui envoie directement à l'API Brevo
+// côté client. Les deux variables PUBLIC_* sont injectées au build
+// par Cloudflare Pages.
+const listId = import.meta.env.PUBLIC_BREVO_LIST_ID;
+const apiKey = import.meta.env.PUBLIC_BREVO_API_KEY_CAPTURE;
+---
+
+<form id="email-capture" class="email-capture" novalidate>
+  <label for="ec-email" class="sr-only">Adresse email</label>
+  <input
+    id="ec-email"
+    name="email"
+    type="email"
+    required
+    autocomplete="email"
+    placeholder="votre@email.com"
+  />
+  <button type="submit">Demander l'accès</button>
+  <p class="ec-status" role="status" aria-live="polite"></p>
+</form>
+
+<script is:inline define:vars={{ listId, apiKey }}>
+  (function () {
+    const form = document.getElementById('email-capture');
+    if (!form) return;
+
+    const input = form.querySelector('input[name="email"]');
+    const status = form.querySelector('.ec-status');
+    const btn = form.querySelector('button[type="submit"]');
+
+    function say(msg, ok) {
+      status.textContent = msg;
+      status.dataset.ok = ok ? '1' : '0';
+    }
+
+    form.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      const email = (input.value || '').trim();
+      if (!email || !email.includes('@')) {
+        say("Merci d'entrer un email valide.", false);
+        return;
+      }
+
+      if (!apiKey || !listId) {
+        say(
+          'Configuration manquante côté build (clés Brevo).',
+          false,
+        );
+        return;
+      }
+
+      btn.disabled = true;
+      say('Envoi en cours…', true);
+
+      try {
+        const res = await fetch('https://api.brevo.com/v3/contacts', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            accept: 'application/json',
+            'api-key': apiKey,
+          },
+          body: JSON.stringify({
+            email: email,
+            listIds: [Number(listId)],
+            updateEnabled: true,
+          }),
+        });
+
+        if (res.ok || res.status === 204) {
+          say('Merci. Nous vous recontactons rapidement.', true);
+          form.reset();
+        } else if (res.status === 400) {
+          const body = await res.json().catch(function () {
+            return {};
+          });
+          if (body && body.code === 'duplicate_parameter') {
+            say('Merci. Nous vous recontactons rapidement.', true);
+            form.reset();
+          } else {
+            say('Une erreur est survenue. Réessayez plus tard.', false);
+          }
+        } else {
+          say('Une erreur est survenue. Réessayez plus tard.', false);
+        }
+      } catch (err) {
+        say('Connexion impossible. Réessayez plus tard.', false);
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  })();
+</script>
+
+<style>
+  .email-capture {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    max-width: 520px;
+    margin: 2rem 0 0;
+  }
+
+  .email-capture input[type='email'] {
+    flex: 1 1 240px;
+    min-width: 200px;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--card);
+    color: var(--fg);
+    font: inherit;
+  }
+
+  .email-capture input[type='email']:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+  }
+
+  .email-capture button {
+    padding: 0.75rem 1.25rem;
+    border: 0;
+    border-radius: 6px;
+    background: var(--accent);
+    color: #1a120a;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .email-capture button:hover {
+    filter: brightness(1.05);
+  }
+
+  .email-capture button:disabled {
+    opacity: 0.6;
+    cursor: wait;
+  }
+
+  .ec-status {
+    width: 100%;
+    margin: 0.25rem 0 0;
+    font-size: 0.875rem;
+    color: var(--muted);
+  }
+
+  .ec-status[data-ok='0'] {
+    color: #ff8b8b;
+  }
+
+  .ec-status[data-ok='1'] {
+    color: #9fd4a1;
+  }
+
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+</style>
