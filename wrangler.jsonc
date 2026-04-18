@@ -1,0 +1,11 @@
+{
+  // Cloudflare Workers — déploiement static assets pour Astro
+  // Doc: https://developers.cloudflare.com/workers/static-assets/
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "shelters-website",
+  "compatibility_date": "2024-11-01",
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "404-page"
+  }
+}
